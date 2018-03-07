@@ -12,4 +12,3 @@ Run the docker-compose up command in the localhost-sanshanblog folder (In the co
 The deployment environment requires 2 gb of memory or 2gb swapmemory 
 
 > It is best to multi core cpu 
- 
