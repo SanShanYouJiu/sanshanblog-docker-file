@@ -1,0 +1,89 @@
+# 生成环境使用 数据卷
+version: '2'
+
+volumes:
+    mongo-data:
+    elasticsearch-data:
+    db-data:  
+    
+services:
+
+  web_front:
+    container_name: sanshanblog_front  
+    restart: always
+    mem_limit: 20M
+    build: ./web_front
+   
+       
+  web_back:
+    container_name: sanshanblog_back
+    build: ./web_back
+    restart: always
+    mem_limit: 820M
+    volumes:
+     - "./web_back/sanshanblog:/etc/sanshanblog/"
+    depends_on:
+     - db
+     - mongo
+     - redis
+     - elasticsearch
+ 
+     
+  redis:
+    container_name: sanshanblog_redis
+    image: "redis:3.2"
+    restart: always
+    mem_limit: 100M
+ 
+       
+  
+  mongo:
+    container_name: sanshanblog_mongo
+    image: "mongo:3.4" 
+    restart: always
+    mem_limit: 150M
+    volumes:
+     - "mongo-data:/data/db"
+     
+   
+   
+  elasticsearch:
+     container_name: sanshanblog_es
+     build: "./elasticsearch"
+     restart: always
+     mem_limit: 700M
+     volumes:
+       - "elasticsearch-data:/usr/share/elasticsearch/data"
+       - "./elasticsearch/logs:/usr/share/elasticsearch/logs"
+ 
+  
+  db: 
+    container_name: sanshanblog_db
+    image: "mysql:5.7"
+    restart: always 
+    mem_limit: 450M
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234567q
+      MYSQL_DATABASE: sanshanblog
+      MYSQL_USER: sanshan
+      MYSQL_PASSWORD: 1234567q
+    volumes:
+      - "./db/init:/docker-entrypoint-initdb.d"
+      - "db-data:/var/lib/mysql"
+      - "./db/conf:/etc/mysql/conf.d"
+    
+ 
+   
+  web_proxy:
+    container_name: sanshanblog_proxy
+    restart: always 
+    mem_limit: 50M
+    build: './web_proxy'
+    ports:
+       - "80:80"
+    depends_on:
+      - web_front
+      - web_back       
+             
+     
+    

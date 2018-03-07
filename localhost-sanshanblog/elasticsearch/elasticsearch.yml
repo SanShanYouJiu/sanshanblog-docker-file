@@ -1,0 +1,8 @@
+cluster.name: elasticsearch
+ 
+node.name: sanshanblog-node-1
+network.host: 0.0.0.0
+http.port: 9200
+ 
+index.analysis.analyzer.default.tokenizer : "ik_max_word"
+index.analysis.analyzer.default.type: "ik"
