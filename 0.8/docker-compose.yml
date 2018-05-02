@@ -1,0 +1,231 @@
+version: '3.3' 
+
+volumes:
+  mongo-data:
+  elasticsearch-data:
+  sanshan-auth-db-data:
+  sanshan-main-db-data:
+ 
+networks:
+  sanshan:  
+    driver: overlay
+    attachable: true
+  
+services:
+
+  eureka:
+    image: registry.cn-hangzhou.aliyuncs.com/sanshan/sanshan-center:0.8
+    depends_on:
+      - mongo
+    ports:
+      - "8761:8761"
+    deploy:
+      replicas: 1    
+    networks:
+      - sanshan  
+      
+  sanshan-main:
+    image: registry.cn-hangzhou.aliyuncs.com/sanshan/sanshan-main:0.8
+    depends_on:
+      - sanshan-main-db
+      - mongo
+      - redis
+      - sanshan-auth
+      - rabbit
+      - eureka
+    deploy:
+      replicas: 1      
+    networks:
+      - sanshan        
+    environment:
+      - EUREKA_HOST=eureka
+      - EUREKA_PORT=8761
+      - REDIS_HOST=redis
+      - RABBIT_MQ_HOST=rabbit
+      - RABBIT_MQ_PORT=5672  
+    configs:
+      - source: sanshan-main-setting.json
+        target: /etc/sanshan-main/sanshan-main-setting.json
+        mode: 0440    
+       
+
+
+  sanshan-search:
+    image: registry.cn-hangzhou.aliyuncs.com/sanshan/sanshan-search:0.8
+    links:
+      - rabbit 
+    networks:
+      - sanshan        
+    depends_on:
+      - elasticsearch
+      - mongo
+      - eureka
+      - rabbit
+      - sanshan-auth
+    deploy:
+      replicas: 1    
+    environment:
+      - EUREKA_HOST=eureka
+      - EUREKA_PORT=8761
+      - RABBIT_MQ_HOST=rabbit
+      - RABBIT_MQ_PORT=5672
+ 
+
+  elasticsearch:
+    image: registry.cn-hangzhou.aliyuncs.com/sanshan/sanshan-elasticsearch:0.8
+    networks:
+      - sanshan      
+    deploy:
+      replicas: 1      
+    volumes:
+      - "elasticsearch-data:/usr/share/elasticsearch/data"       
+
+  sanshan-auth:
+    image: registry.cn-hangzhou.aliyuncs.com/sanshan/sanshan-auth:0.8
+    networks:
+      - sanshan     
+    deploy:
+      replicas: 1      
+    depends_on:
+      - mongo
+      - eureka
+      - rabbit
+      - redis
+      - sanshan-auth-db
+    environment:
+      - EUREKA_HOST=eureka
+      - EUREKA_PORT=8761
+      - REDIS_HOST=redis
+      - RABBIT_MQ_HOST=rabbit
+      - RABBIT_MQ_PORT=5672
+      - MYSQL_HOST=sanshan-auth-db
+
+  rabbit:
+    image: "rabbitmq:3.7.4"
+    networks:
+      - sanshan      
+    deploy:
+      replicas: 1   
+    restart: always
+
+  sanshan-gate:
+    image: registry.cn-hangzhou.aliyuncs.com/sanshan/sanshan-gate:0.8
+    networks:
+      - sanshan
+    deploy:
+      replicas: 1 
+    depends_on:
+      - eureka
+      - mongo
+      - rabbit
+      - sanshan-auth
+    environment:
+      - EUREKA_HOST=eureka
+      - EUREKA_PORT=8761
+      - RABBIT_MQ_HOST=rabbit
+      - RABBIT_MQ_PORT=5672
+
+  sanshan-auth-db:
+    image: registry.cn-hangzhou.aliyuncs.com/sanshan/sanshan-auth-db:0.8
+    restart: always
+    deploy:
+      replicas: 1     
+    networks:
+      - sanshan      
+    environment:
+      MYSQL_ROOT_PASSWORD: liuziye
+      MYSQL_DATABASE: sanshan-auth
+      MYSQL_USER: sanshan
+      MYSQL_PASSWORD: 1234567q
+    volumes:
+       - "sanshan-auth-db-data:/var/lib/mysql"
+
+  sanshan-main-db:
+    image: registry.cn-hangzhou.aliyuncs.com/sanshan/sanshan-main-db:0.8
+    restart: always
+    deploy:
+      replicas: 1     
+    networks:
+      - sanshan      
+    environment:
+      MYSQL_ROOT_PASSWORD: liuziye
+      MYSQL_DATABASE: sanshan_main
+      MYSQL_USER: sanshan
+      MYSQL_PASSWORD: 1234567q
+    volumes:
+       - "sanshan-main-db-data:/var/lib/mysql"
+
+  redis:
+    image: "redis:3.2"
+    networks:
+      - sanshan      
+    deploy:
+      replicas: 1       
+    restart: always
+
+  mongo:
+    image: "mongo:3.4"
+    deploy:
+      replicas: 1     
+    networks:
+      - sanshan      
+    restart: always
+    volumes:
+      - "mongo-data:/data/db"
+      
+  
+  web-front:
+    image: registry.cn-hangzhou.aliyuncs.com/sanshan/web-front:0.8
+    networks:
+      - sanshan
+    deploy:
+      replicas: 1    
+    configs:
+      - source: front.conf
+        target: /etc/nginx/conf.d/front.conf
+        mode: 0440  
+   
+
+  web-proxy:
+    image: registry.cn-hangzhou.aliyuncs.com/sanshan/web-proxy:0.8
+    networks:
+      - sanshan
+    restart: always 
+    ports:
+       - "80:80"
+       - "443:443"  
+    links:
+      - web-front   
+    deploy: 
+       replicas: 1    
+    secrets:
+      - site.crt
+      - site.key  
+    configs:
+      - source: site.conf
+        target: /etc/nginx/conf.d/site.conf
+        mode: 0440     
+    depends_on:
+      - web-front
+      - sanshan-gate
+      - sanshan-auth      
+      
+
+secrets:
+   site.crt:
+     external: true
+   site.key:
+     external: true 
+      
+configs:
+   site.conf:
+      external: true
+   front.conf:
+      external: true   
+   sanshan-main-setting.json:
+      external: true   
+      
+
+
+
+

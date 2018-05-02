@@ -1,6 +1,14 @@
 # about sanshanblog docker build file
+## 0.8
+> This is deployed on the cluster to the attention of the management node can't occupy port 80 or 443
+
+you need https site.key && name for site.crt to create secrets
+this sanshan-main-setting.json config to domain name
+and notice you docker  must  login to registry.cn-hangzhou.aliyuncs.com to download images 
+
+## 0.7
 > this is local test docker file,ip is localhost ,notice don't take up  port 80
-## notice
+###  notice
 please use [localhost-sanshanblog.tar](https://github.com/SanShanYouJiu/sanshanblog-docker-file/releases) (There is a problem with using the file directly)
 
 at local system to tar-xvf decompressed [localhost-sanshanblog.tar](https://github.com/SanShanYouJiu/sanshanblog-docker-file/releases)
